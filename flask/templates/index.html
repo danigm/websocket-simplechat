@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+</head>
+<body>
+    <p>Websocket with Flask, Gevent and Gevent-websocket</p>
+    <table>
+        <tbody id="log">
+        </tbody>
+    </table>
+    <input type="text" id="text" placeholder="say hi"/>
+    <button id="send" type="button">Send!</button>
+    <script>
+
+        var ws = {};
+        function connect() {
+            var log = document.getElementById('log');
+            ws = new WebSocket("ws://" + document.domain + ":5000/websocket");
+            ws.onmessage = function (msg) {
+                var message = JSON.parse(msg.data);
+                log.innerHTML += '<tr><td>' + message.date + '</td><td>' + message.output + '</td></tr>';
+            };
+
+            ws.onopen = function (evt) {
+                log.innerHTML += '<tr><td></td><td>CONNECTED</td></tr>';
+            };
+
+            ws.onclose = function (evt) {
+                log.innerHTML += '<tr><td></td><td>DISCONNECTED</td></tr>';
+                ws.onclose = function () {}; // disable onclose handler first
+                ws.close();
+                connect();
+            };
+        }
+
+        function initApplication() {
+            if ("WebSocket" in window) {
+                connect();
+            };
+
+            // Bind send button to websocket
+            var input = document.getElementById('text');
+            document.getElementById('send').addEventListener('click', function (event) {
+                ws.send(JSON.stringify({ 'msg': input.value }));
+            }, false);
+
+            // Cleanly close websocket when unload window
+            window.onbeforeunload = function() {
+                ws.onclose = function () {}; // disable onclose handler first
+                ws.close()
+            };
+        }
+
+        document.onreadystatechange = function() {
+            if (document.readyState == 'complete')
+                initApplication();
+        };
+
+    </script>
+</body>
+</html>
