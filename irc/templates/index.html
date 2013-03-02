@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <style>
+        .date {
+            font-size: x-small;
+        }
+        .who {
+            color: #880000;
+            font-weight: bold;
+        }
+
+        .msg {
+            width: 80%;
+        }
+
+        .me td {
+            background-color: #ffff00;
+        }
+
+        .tome td {
+            background-color: #00ff00;
+        }
+
+        td {
+            border: 1px solid gray;
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        #text {
+            width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <h2>Websocket IRC client</h2>
+
+    <fieldset id="connection">
+        <legend>Connect</legend>
+        <input type="text" id="host" placeholder="irc.freenode.net"/>
+        <input type="text" id="port" placeholder="6667"/>
+        <input type="text" id="nick" placeholder="nick"/>
+        <input type="text" id="channel" placeholder="wadobo"/>
+        <button id="connect" type="button">Connect!</button>
+    </fieldset>
+
+    <input type="text" id="text" placeholder="say hi"/>
+    <button id="send" type="button">Send!</button>
+
+    <table id="irc">
+        <tbody id="ircbody">
+        </tbody>
+    </table>
+
+    <script>
+        var ws = {};
+        function connect() {
+            var log = document.getElementById('ircbody');
+            ws = new WebSocket("ws://" + document.domain + ":{{ port }}/websocket");
+            ws.onmessage = function (msg) {
+                var message = JSON.parse(msg.data);
+                var d = new Date();
+                d = d.getFullYear() + '-' +
+                    d.getMonth() + '-' +
+                    d.getDate() + ' ' +
+                    d.getHours() + ':' +
+                    d.getMinutes() + ':' +
+                    d.getSeconds();
+                var nick = document.getElementById('nick').value;
+                var trclass = '';
+                if (nick == message.who) {
+                    trclass = 'me';
+                }
+                if (message.output.indexOf(nick) != -1) {
+                    trclass = 'tome';
+                }
+
+                log.innerHTML = '<tr class="' + trclass + '">'+
+                                '<td class="date">' + d + '</td>' +
+                                '<td class="who">' + message.who + '</td>' +
+                                '<td class="msg">' + message.output + '</td></tr>' + log.innerHTML;
+            };
+
+            ws.onopen = function (evt) {
+                //log.innerHTML += '<tr><td></td><td>CONNECTED</td></tr>';
+            };
+
+            ws.onclose = function (evt) {
+                //log.innerHTML += '<tr><td></td><td>DISCONNECTED</td></tr>';
+                ws.onclose = function () {}; // disable onclose handler first
+                ws.close();
+                connect();
+            };
+        }
+
+        function initApplication() {
+            if ("WebSocket" in window) {
+                connect();
+            };
+
+            // Bind send button to websocket
+            document.getElementById('send').addEventListener('click', function (event) {
+                var input = document.getElementById('text');
+                ws.send(JSON.stringify({ 'msg': input.value }));
+            }, false);
+
+            var input = document.getElementById('text');
+            input.addEventListener('keyup', function (event) {
+                if (event.keyCode == 13) {
+                    var input = document.getElementById('text');
+                    ws.send(JSON.stringify({ 'msg': input.value }));
+                }
+            }, false);
+            document.getElementById('connect').addEventListener('click', function (event) {
+                var host = document.getElementById('host');
+                var port = document.getElementById('port');
+                var nick = document.getElementById('nick');
+                var channel = document.getElementById('channel');
+                ws.send(JSON.stringify({ 'host': host.value, 'port': port.value, 'nick': nick.value, 'channel': channel.value}));
+            }, false);
+
+            // Cleanly close websocket when unload window
+            window.onbeforeunload = function() {
+                ws.onclose = function () {}; // disable onclose handler first
+                ws.close()
+            };
+        }
+
+        document.onreadystatechange = function() {
+            if (document.readyState == 'complete')
+                initApplication();
+        };
+
+    </script>
+</body>
+</html>
